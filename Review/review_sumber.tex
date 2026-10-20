@@ -1,0 +1,144 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,booktabs,array,enumitem,xcolor,parskip}
+\usepackage[colorlinks=true,urlcolor=blue,linkcolor=black]{hyperref}
+
+\newcommand{\ok}[1]{\textcolor{green!40!black}{#1}}
+\newcommand{\bad}[1]{\textcolor{red!70!black}{#1}}
+\setlist{itemsep=2pt,topsep=2pt}
+
+\title{Review dan Komentar Sumber Belajar Neural Network\\[2pt]\large Pembelajaran PyTorch, ANN untuk PV, dan Peramalan Deret Waktu}
+\author{Disusun Marsa Naufal (04231047)}
+\date{20 Oktober 2026}
+
+\setlength{\emergencystretch}{3em}
+\begin{document}
+\maketitle
+
+\section*{Ringkasan}
+
+\begin{itemize}
+  \item \textbf{learnpytorch.io}: sumber belajar terbaik di antara keempatnya untuk pemula, tetapi bukan sumber untuk data finansial/energi.
+  \item \textbf{Neural-Network-for-PV-system}: notebook yang berjalan, namun memuat \bad{kebocoran skala data (scaling) dan arsitektur yang janggal}; jangan ditiru apa adanya.
+  \item \textbf{TimeSeriesForecastingDairyProduction}: analisis deret waktu klasik (R), tanpa validasi; berguna sebagai contoh dekomposisi, bukan sebagai contoh evaluasi.
+  \item \textbf{lstm-load-forecasting}: rancangan eksperimen paling rapi (grup fitur, pembanding statistik, rolling forecast), tetapi lingkungannya sudah usang.
+\end{itemize}
+
+\section{learnpytorch.io (Zero to Mastery, Daniel Bourke)}
+\textbf{Isi.} Kursus gratis berbentuk buku daring dan video: 00 Fundamentals, 01 Workflow, 02 Neural Network Classification, 03 Computer Vision, 04 Custom Datasets, 05 Going Modular, 06 Transfer Learning, dan tiga proyek milestone (experiment tracking, mereplikasi paper, deployment).
+
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Kelebihan} & \textbf{Kekurangan} \\
+\midrule
+\ok{Gratis, kode-dulu}: tiap konsep langsung dijalankan di Colab. &
+\bad{Tidak ada materi tabular/finansial} atau deret waktu; contohnya gambar dan data mainan. \\
+Alur kerja konsisten (data $\rightarrow$ model $\rightarrow$ loss $\rightarrow$ loop $\rightarrow$ evaluasi) yang mudah dihafal. &
+Terakhir diperbarui sekitar April 2023; bagian PyTorch 2.0 belum lengkap pada saat halaman dibaca. \\
+Bab 02 memperkenalkan non-linearitas (ReLU) dan \texttt{BCEWithLogitsLoss} dengan benar. &
+Bergantung pada Google Colab dan mengasumsikan pengetahuan Python/ML dasar; halaman merekomendasikan bootcamp berbayar penulisnya. \\
+\bottomrule
+\end{tabular}
+
+\textbf{Komentar.} Cocok sebagai fondasi, dan pola di notebook \texttt{finance\_nn.ipynb} (MLP, \texttt{BCEWithLogitsLoss}, mini-batch, Adam) mengikuti bab 02. Kekurangan terbesar bagi proyek keuangan atau energi: tidak ada pembahasan \textbf{split berurutan waktu}, kelas tidak seimbang, atau pemilihan hyperparameter dengan validasi. Bagian itu harus ditambah dari sumber lain.
+
+\section{Neural-Network-for-PV-system (beki2022)}
+\textbf{Isi (dari notebook yang saya baca).} Regresi tabular: 6 fitur iradiasi (\texttt{Ir11, Ir21, Ir31, Ir12, Ir22, Ir32}) memprediksi target \texttt{Voltage\_pmax}; 36.071 baris, dimuat dari Google Drive. Pembagian acak 80/20 (28.856 latih, 7.215 uji), \texttt{MinMaxScaler}, jaringan Keras 9 lapisan Dense, Adam (lr $10^{-4}$), 1000 epoch, batch 10, \texttt{validation\_split=0.1}.
+
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Kelebihan} & \textbf{Kekurangan} \\
+\midrule
+Masalahnya jelas dan relevan (prediksi titik daya maksimum PV dari iradiasi). &
+\bad{Data tidak ikut repositori} (path \texttt{/content/drive/MyDrive/...}); tidak dapat dijalankan ulang oleh orang lain. \\
+Kurva loss latih vs validasi diplot; ada MAE selain MSE. &
+\bad{Nilai metrik akhir tidak tersimpan} di keluaran notebook (sel pencetak MAE/RMSE tidak punya keluaran), jadi klaim performa tidak dapat diperiksa. \\
+Model disimpan ke \texttt{.h5} sehingga tidak perlu dilatih ulang. &
+Tidak ada \texttt{random\_state} pada split sehingga hasil berubah tiap kali dijalankan. \\
+\bottomrule
+\end{tabular}
+
+\subsection*{Masalah metodologi yang saya temukan}
+\begin{enumerate}
+  \item \textbf{Scaler di-fit ulang pada data uji.} Sel 14 memakai \texttt{fit\_transform} pada \texttt{x\_train}, lalu sel 15 memakai \texttt{fit\_transform} lagi pada \texttt{x\_test}. Seharusnya \texttt{transform} saja dengan scaler dari data latih. Akibatnya skala data uji berbeda dari data latih dan metrik uji tidak valid.
+  \item \textbf{Arsitektur janggal.} Ada lapisan \texttt{softmax} 84 unit di tengah jaringan (softmax untuk output klasifikasi, bukan lapisan tersembunyi regresi), dua lapisan \texttt{sigmoid} di tengah, dan dua lapisan \texttt{linear} berurutan yang secara matematis dapat digabung menjadi satu. Tidak ada justifikasi; model sederhana (2--3 lapisan ReLU) hampir pasti cukup untuk 6 fitur.
+  \item \textbf{Overfitting dan tidak ada early stopping.} Pada epoch 1000, loss latih $\approx$ 4,9 sedangkan loss validasi $\approx$ 21,6 (MAE validasi $\approx$ 1,48). Selisih ini menandakan jaringan menghafal; 1000 epoch dengan batch 10 (2.597 langkah per epoch) tanpa \texttt{EarlyStopping} memboroskan waktu.
+  \item \textbf{Pelatihan ganda tanpa dicatat.} Sel 20 melatih lagi 50 epoch pada \emph{seluruh} data latih (termasuk bagian validasi) bila berkas \texttt{.h5} belum ada, lalu menyimpan model. Model yang dievaluasi bukan model yang kurvanya diplot.
+  \item \textbf{Plot prediksi tidak sejajar.} \texttt{y\_test} diplot dengan indeks asli (acak karena split acak), sedangkan prediksi diplot pada \texttt{range(len(y\_train)+50, \ldots)}. Dua garis itu tidak berada pada sumbu yang sama, sehingga grafik tidak dapat dibaca sebagai perbandingan.
+  \item \textbf{Pencampuran \texttt{keras} dan \texttt{tf.keras}} (impor ganda) berisiko menimbulkan konflik versi (\texttt{keras} 2.8.0 terdeteksi).
+\end{enumerate}
+
+\textbf{Saran.} Pisahkan data latih/validasi/uji, \texttt{fit} scaler hanya pada latih, pakai \texttt{EarlyStopping}, sederhanakan model, simpan metrik ke keluaran, dan sertakan contoh data kecil di repositori.
+
+\section{TimeSeriesForecastingDairyProduction (themodernturing)}
+\textbf{Isi (dari README).} Analisis R atas produksi susu dan es krim bulanan di California: dekomposisi (rata-rata bergerak dan STL), ARIMA pada komponen sisa, auto-ARIMA dari paket \texttt{forecast}, dan ramalan 12 bulan dengan interval kepercayaan.
+
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Kelebihan} & \textbf{Kekurangan} \\
+\midrule
+Alur klasik yang benar secara konsep: plot, ACF/PACF, dekomposisi, model, ramalan. &
+\bad{Tidak ada validasi}: tidak ada data uji, tidak ada RMSE/MAE/MAPE, jadi kualitas ramalan tidak dapat dinilai. \\
+Dekomposisi STL membantu memahami tren dan musiman. &
+Data \texttt{cadairydata.csv} tidak ada di repositori; sumber dan rentang waktu tidak dijelaskan. \\
+Ramalan menyertakan interval kepercayaan. &
+Metode akhir ambigu (ARIMA pada sisa vs auto-ARIMA); nama berkas di README tidak sama dengan berkas sebenarnya; bagian lisensi kosong. \\
+\bottomrule
+\end{tabular}
+
+\textbf{Komentar.} Bukan contoh yang baik untuk neural network (tidak ada model neural sama sekali), tetapi berguna sebagai pembanding \emph{baseline} statistik. Untuk data bulanan, model musiman (SARIMA/ETS) dan evaluasi dengan hold-out 12 bulan adalah langkah minimal yang absen.
+
+\section{lstm-load-forecasting (dafrie)}
+\textbf{Isi.} Proyek demo peramalan beban listrik Swiss dengan LSTM (Keras 2.0.2/TensorFlow), data per jam dari ENTSO-E dan cuaca dari Dark Sky, ukuran total $20756 \times 78$. Enam grup fitur (hanya ENTSO-E, hanya kalender, hanya cuaca, dan kombinasinya) dibandingkan terhadap pembanding TBATS dan ARIMA (R), plus rolling forecast. Repositori ini bertanda 210 bintang dan lisensi MIT.
+
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Kelebihan} & \textbf{Kekurangan} \\
+\midrule
+\ok{Desain eksperimen paling rapi}: grup fitur dipisah sehingga kontribusi tiap grup dapat dibandingkan. &
+\bad{Dependensi sangat tua} (Keras 2.0.2); hampir pasti tidak berjalan di lingkungan modern tanpa penyesuaian. \\
+Pembanding statistik (TBATS, ARIMA) dan \emph{rolling forecast} merupakan evaluasi yang realistis. &
+Butuh API key (\texttt{config.json}); layanan Dark Sky sudah tidak tersedia sehingga data cuaca tidak dapat diambil ulang. \\
+Struktur berkas dan notebook per model jelas; model tersimpan (HDF5). &
+README tidak menyebut metrik, ruang pencarian hyperparameter, atau angka hasil utama. \\
+\bottomrule
+\end{tabular}
+
+\textbf{Komentar.} Ini sumber paling dekat dengan kebutuhan deret waktu serius dan paling layak ditiru dari sisi desain: bandingkan model neural dengan baseline statistik, ablasi fitur, dan evaluasi bergulir. Saya \textbf{tidak memverifikasi} angka hasilnya; README tidak memuatnya dan notebook tidak saya jalankan.
+
+\section{Perbandingan ringkas}
+\begin{tabular}{@{}p{3.4cm}p{2.6cm}p{2.5cm}p{2.5cm}p{2.5cm}@{}}
+\toprule
+ & learnpytorch & PV notebook & Dairy (R) & LSTM load \\
+\midrule
+Tujuan & Belajar PyTorch & Regresi PV & Ramal bulanan & Ramal beban \\
+Reproducible & Ya (Colab) & Tidak (data Drive) & Sebagian (CSV hilang) & Sebagian (API tua) \\
+Validasi benar & Tidak dibahas & \bad{Bermasalah} & \bad{Tidak ada} & Ya (rolling) \\
+Baseline pembanding & --- & Tidak ada & Tidak ada & Ya (TBATS, ARIMA) \\
+Layak ditiru & Fondasi & Tidak apa adanya & Sebagian & Desainnya \\
+\bottomrule
+\end{tabular}
+
+\section{Catatan terkait lampiran}
+\subsection{Laporan akhir: ANN vs P\&O untuk MPPT}
+Ini bukan website yang diminta, tetapi karena terlampir saya catat temuan yang perlu diperbaiki:
+\begin{itemize}
+  \item \textbf{Kontradiksi angka.} Tabel 7.4 menyebut efisiensi P\&O 84,26\,\% dan ANN 87,9\,\%, tetapi Bab 8.1 menulis ``P\&O 87,9\,\% sedangkan ANN 84,26\,\%''. Salah satu harus dikoreksi; tabel yang benar menurut seluruh bab 7.
+  \item \textbf{Satuan temperatur.} Bab 3.3 menulis tegangan sel turun ``2,2\,V'' per derajat. Nilai yang lazim adalah sekitar 2,2\,mV per $^\circ$C per sel.
+  \item \textbf{Persamaan 6.6.1} memakai konstanta $\tfrac{1}{12}$ sementara teks menyebut $N$ pola latih; seharusnya $\tfrac{1}{N}$.
+  \item \textbf{Data latih berasal dari P\&O.} ANN meniru P\&O (200.000 sampel), sehingga batas kualitasnya adalah kualitas P\&O sendiri; ini perlu dinyatakan sebagai keterbatasan. Judul ``Levenberg--Marquardt'' di 6.6 dan teks backpropagation di Bab 5.6 tidak diberi hubungan yang jelas.
+  \item \textbf{Splitting.} Pembagian latih/validasi/uji pada bab 7.2(I) (R $\approx$ 0,989 di semua subset) perlu keterangan bahwa data berasal dari satu simulasi yang sama, sehingga R tinggi tidak membuktikan generalisasi ke kondisi cuaca lain.
+\end{itemize}
+
+\subsection{Tangkapan layar TensorFlow Playground}
+Pengaturan: tugas \emph{regression}, aktivasi tanh, learning rate 0,03, batch 10, 2 lapisan tersembunyi (4 dan 5 neuron), L1 dengan rate 0, noise 0, epoch 1.023, test loss dan training loss 0,000. Loss $\approx$ 0 wajar karena noise 0 dan pola data berupa gradien hampir linear; jaringan dua lapisan berlebihan untuk pola ini (jaringan yang jauh lebih kecil sudah cukup). Playground cocok untuk intuisi tentang kapasitas dan learning rate, tetapi hasilnya tidak berlaku untuk data nyata yang bernoise dan memiliki fitur kategorikal.
+
+\section{Rekomendasi}
+\begin{enumerate}
+  \item Untuk belajar, ikuti learnpytorch.io bab 00--02, lalu terapkan pada data sendiri (sudah dilakukan di \texttt{NN/finance\_nn.ipynb}).
+  \item Untuk deret waktu, tiru desain lstm-load-forecasting (baseline statistik, ablasi fitur, rolling forecast), tetapi tulis ulang dengan TensorFlow/PyTorch modern.
+  \item Jangan menyalin notebook PV apa adanya; perbaiki scaler, arsitektur, early stopping, dan plot lebih dulu.
+  \item Selalu pisahkan data uji sebelum melakukan apa pun, dan untuk deret waktu pisahkan secara kronologis, bukan acak.
+\end{enumerate}
+
+\end{document}
