@@ -7,7 +7,7 @@ Marsa Naufal (04231047). Kumpulan notebook untuk empat topik, masing-masing di f
 | [GA/](GA) | Genetic Algorithm (PyGAD) | `genetic_algoritm.ipynb` (hyperparameter tuning & Vehicle Routing Problem), `05_applications_ga_checkpoint.ipynb` (contoh penerapan) |
 | [NN/](NN) | Neural Network (PyTorch) | `finance_nn.ipynb` (deteksi fraud & skoring kredit, termasuk tuning hyperparameter), `neural_network.ipynb` (latihan klasifikasi `make_circles`) |
 | [PSO/](PSO) | Particle Swarm Optimization (PySwarms) | `particle_swarm_opt.ipynb`, `05.applications_pso.ipynb`, `pso_pengembangan/` (PSO untuk smart city home) |
-| [Fuzzy/](Fuzzy) | Fuzzy Logic Mamdani (scikit-fuzzy) | `fuzzy_spare_parts.ipynb`: stok suku cadang (Problem 1: n untuk m=0.4, s=0.45, ρ=0.45; Problem 2: permukaan 3D untuk ρ=0) dan kasus tambahan risiko kredit; `contoh_dosen/` berisi 5 notebook contoh dari dosen (Sugeno, Tsukamoto, Mamdani, Tipping, project risk) |
+| [Fuzzy/](Fuzzy) | Fuzzy Logic Mamdani (scikit-fuzzy) | `fuzzy_spare_parts.ipynb`: stok suku cadang (Problem 1: n untuk m=0.4, s=0.45, ρ=0.45; Problem 2: permukaan 3D untuk ρ=0) dan kasus tambahan risiko kredit; `contoh_fuzzy/` berisi 5 notebook contoh dari dosen (Sugeno, Tsukamoto, Mamdani, Tipping, project risk) |
 
 `data_janji_jiwa.csv` di root dipakai bersama oleh notebook GA dan PSO (dibaca lewat `../data_janji_jiwa.csv`).
 
