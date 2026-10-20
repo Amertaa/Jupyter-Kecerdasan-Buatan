@@ -1,0 +1,28 @@
+{
+  "city_selected_config": "c2_0.5",
+  "home_selected_config": "rounds_30",
+  "city_initial_km": 2.705270962107984,
+  "city_final_km": 1.3635157375278142,
+  "city_reduction_percent": 49.59781269136367,
+  "home_initial_rp": 62215.0,
+  "home_final_rp": 44905.0,
+  "home_saving_rp": 17310.0,
+  "home_peak_kw": 2.85,
+  "total_runs_tuning_and_holdout": 152,
+  "total_search_evaluations": 182600,
+  "total_measured_pso_seconds": 3.998830502387136,
+  "all_final_solutions_feasible": true,
+  "tuning_seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "holdout_seeds": [
+    101,
+    202,
+    303
+  ],
+  "data_seed": 20260922
+}

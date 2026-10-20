@@ -1,0 +1,7 @@
+case,config,seed,cost,feasible,seconds,evals
+rumah_validasi,baseline,101,44905.0,True,0.05164308287203312,1200
+rumah_validasi,rounds_30,101,44905.0,True,0.02492112503387034,600
+rumah_validasi,rounds_30,202,44005.0,True,0.024289292050525546,600
+rumah_validasi,baseline,202,44005.0,True,0.04821266606450081,1200
+rumah_validasi,rounds_30,303,45865.0,True,0.026157458079978824,600
+rumah_validasi,baseline,303,45865.0,True,0.05400841683149338,1200

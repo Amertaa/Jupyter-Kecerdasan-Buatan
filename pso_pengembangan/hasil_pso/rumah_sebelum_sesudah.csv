@@ -1,0 +1,3 @@
+solusi,biaya_total_rp,biaya_fleksibel_rp,energi_kwh,puncak_kw,layak
+Sebelum,62215.0,41100.0,31.750000000000004,3.2,True
+Sesudah PSO,44905.0,23790.0,31.75,2.85,True

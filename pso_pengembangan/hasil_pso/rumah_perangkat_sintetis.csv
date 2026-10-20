@@ -1,0 +1,7 @@
+perangkat,daya_kw,durasi_jam,earliest,deadline,mulai_awal
+Mesin cuci,0.6,2,6,16,8
+Pengering,1.8,2,10,22,18
+Pencuci piring,1.2,2,12,24,20
+Pemanas air,1.5,2,5,23,16
+Pengisi kendaraan,2.0,4,0,12,6
+Pompa air,0.5,3,6,22,16

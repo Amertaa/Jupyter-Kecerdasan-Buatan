@@ -1,0 +1,12 @@
+names:
+- license plate on a car
+nc: 1
+roboflow:
+  license: CC BY 4.0
+  project: ikn-car-plate-gas-electrict
+  url: https://universe.roboflow.com/bismillah-ipk-4-kali/ikn-car-plate-gas-electrict/dataset/6
+  version: 6
+  workspace: bismillah-ipk-4-kali
+test: ../test/images
+train: ../train/images
+val: ../valid/images
