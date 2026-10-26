@@ -7,6 +7,7 @@ Marsa Naufal (04231047). Kumpulan notebook untuk empat topik, masing-masing di f
 | [GA/](GA) | Genetic Algorithm (PyGAD) | `genetic_algoritm.ipynb` (hyperparameter tuning & Vehicle Routing Problem), `05_applications_ga_checkpoint.ipynb` (contoh penerapan) |
 | [NN/](NN) | Neural Network (PyTorch) | `finance_nn.ipynb` (deteksi fraud & skoring kredit, termasuk tuning hyperparameter), `neural_network.ipynb` (latihan klasifikasi `make_circles`) |
 | [PSO/](PSO) | Particle Swarm Optimization (PySwarms) | `particle_swarm_opt.ipynb`, `05.applications_pso.ipynb`, `pso_pengembangan/` (PSO untuk smart city home) |
+| [UTS/](UTS) | UTS Kecerdasan Buatan 2026/2027 (seed 47) | `soal_03_ga.ipynb` (GA, seleksi fitur wine), `soal_07_pso.ipynb` (PSO, Energy Efficiency multi-output), `soal_12_fuzzy.ipynb` (Mamdani FIS, grid stability), `soal_16_mlp.ipynb` (MLP horsepower Auto MPG), `soal_23_pso_cnn.ipynb` (PSO tuning 1D-CNN, HAR) |
 | [Fuzzy/](Fuzzy) | Fuzzy Logic Mamdani (scikit-fuzzy) | `fuzzy_spare_parts.ipynb`: stok suku cadang (Problem 1: n untuk m=0.4, s=0.45, ρ=0.45; Problem 2: permukaan 3D untuk ρ=0) dan kasus tambahan risiko kredit; `contoh_fuzzy/` berisi 5 notebook contoh dari dosen (Sugeno, Tsukamoto, Mamdani, Tipping, project risk) |
 
 `data_janji_jiwa.csv` di root dipakai bersama oleh notebook GA dan PSO (dibaca lewat `../data_janji_jiwa.csv`).
@@ -20,10 +21,11 @@ pip install torch                                          # NN
 pip install pygad                                          # GA
 pip install pyswarms                                       # PSO
 pip install -U scikit-fuzzy                                # Fuzzy
+pip install openpyxl                                       # UTS soal 7 (membaca .xlsx)
 jupyter lab
 ```
 
-Buka notebook dari folder masing-masing agar path relatif (`../data_janji_jiwa.csv`) benar.
+Buka notebook dari folder masing-masing agar path relatif (`../data_janji_jiwa.csv`) benar. Notebook UTS membaca dataset UCI dari `UTS/data/` (wine+quality, energy+efficiency, Data_for_UCI_named.csv, auto+mpg, human+activity+recognition+using+smartphones).
 
 ## Catatan
 
