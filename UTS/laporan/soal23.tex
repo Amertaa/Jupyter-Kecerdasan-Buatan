@@ -1,0 +1,115 @@
+\newpage
+\section{Soal 23: PSO-CNN untuk Hyperparameter Human Activity Recognition}
+
+Dataset D9 Human Activity Recognition Using Smartphones berasal dari 30 relawan dengan sensor 50 Hz dan window 128 sampel. Saya memakai \texttt{pyswarms} dan \texttt{PyTorch}. Task-nya sama dengan Soal 17, yaitu 1D-CNN pada sinyal inertial mentah dengan split subjek bawaan, tetapi hyperparameter-nya dicari PSO.
+
+\subsection{Business Understanding}
+Pengenalan aktivitas dari sensor HP dipakai untuk aplikasi kesehatan, pemantauan lansia, dan kebugaran. Performa 1D-CNN bergantung pada hyperparameter, dan mencoba semua kombinasi lewat \emph{grid search} sangat mahal. PSO lebih hemat, seperti mencari warung terenak bersama teman-teman yang saling berbagi info lewat grup chat, alih-alih mendatangi semua warung satu per satu.
+
+\begin{tabularx}{\textwidth}{@{}LL@{}}
+\toprule
+\textbf{Kriteria kesuksesan} & \textbf{Ambang} \\
+\midrule
+Accuracy dan macro-F1 test CNN hasil PSO & $\geq 0.88$ \\
+PSO vs baseline manual & macro-F1 test rata-rata (3 seed) $\geq$ baseline \\
+Anggaran tuning & $\leq 30$ evaluasi kandidat, $\leq 25$ menit \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Data Understanding dan Data Preparation}
+Data latih berisi 7.352 window dari 21 subjek, dan data test 2.947 window dari 9 subjek lain. Saya memakai 6 channel: \emph{body\_acc} dan \emph{body\_gyro}, masing-masing sumbu x, y, dan z. Tidak ada NaN maupun window duplikat. Lonjakan dengan $|z| > 5$ hanya 0.21\% titik dan berasal dari hentakan kaki asli, jadi tetap dipakai. Jumlah window per kelas cukup seimbang, 986 sampai 1.407.
+
+Sinyal aktivitas statis (duduk, berdiri, berbaring) hampir datar dan mirip satu sama lain, karena gravitasi sudah dibuang dari \emph{body\_acc}.
+
+\fig{soal_23_2.png}{1.0}{Contoh satu window sinyal mentah untuk setiap aktivitas.}
+
+\jawab{Jawaban 23a: Tensor, split subjek, vektor posisi, mapping, batas, dan velocity clamp}
+Input \texttt{Conv1d} berformat \emph{channel-first}, yaitu (B, 6, 128). Enam sumbu sensor diperlakukan seperti enam warna pada gambar, dan kernel bergeser di sepanjang 128 titik waktu.
+
+Split harus per subjek karena setiap orang punya gaya bergerak sendiri dan window yang berurutan saling tumpang tindih 50\%. Kalau window diacak, test set akan berisi kembaran window latih, dan model akan mengenali orangnya, bukan aktivitasnya. Karena itu test memakai 9 subjek bawaan, dan validation untuk fitness memakai 5 subjek train (7, 8, 21, 25, 26) yang dipisah dengan \texttt{GroupShuffleSplit}. Normalisasi per channel memakai mean dan std data latih saja.
+
+Vektor posisi berdimensi 5, dan semua dimensinya dinormalisasi ke [0, 1] supaya satu velocity clamp adil untuk semua dimensi:
+
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Dim} & \textbf{Hyperparameter} & \textbf{Pilihan valid} & \textbf{Mapping dari $x \in [0,1]$} \\
+\midrule
+$x_0$ & filter F & \{16, 32, 64, 128\} & indeks = $\min(\lfloor 4x \rfloor, 3)$ \\
+$x_1$ & kernel K & \{3, 5, 7, 9, 11\} & indeks = $\min(\lfloor 5x \rfloor, 4)$ \\
+$x_2$ & dropout & $[0, 0.5]$ & $0.5x$ \\
+$x_3$ & dense D & \{32, 64, 128, 256\} & indeks = $\min(\lfloor 4x \rfloor, 3)$ \\
+$x_4$ & learning rate & $10^{u}$, $u \in [-4, -2]$ & $u = -4 + 2x$ \\
+\bottomrule
+\end{tabular}\end{adjustbox}
+
+Posisi kontinu dibagi menjadi laci-laci selebar sama dan baru dibulatkan ke pilihan valid saat dievaluasi. Learning rate dicari di skala log agar ketiga orde besaran terjelajahi merata. Batas [0, 1] memakai clipping (\texttt{nearest}). Velocity clamp $[-0.25, 0.25]$ membatasi pergeseran partikel kira-kira satu laci per iterasi, supaya dengan hanya 5 iterasi partikel tidak melompat bolak-balik. Parameter PSO-nya $w = 0.7$ dan $c_1 = c_2 = 1.5$.
+
+Kerangka CNN-nya tetap, dan ukurannya yang dicari PSO:
+\begin{center}\small
+\texttt{Conv1d(6$\to$F, K) $\to$ ReLU $\to$ MaxPool(2)} \quad (B, F, 64)\\
+\texttt{Conv1d(F$\to$F, K) $\to$ ReLU $\to$ MaxPool(2)} \quad (B, F, 32)\\
+\texttt{Flatten(F$\times$32) $\to$ Dense(D) $\to$ ReLU $\to$ Dropout $\to$ Dense(6)}
+\end{center}
+Panjang sequence berkurang dari 128 ke 64, lalu ke 32.
+
+\jawab{Jawaban 23b: Fitness dan alasan macro-F1}
+\[ \text{fitness} = \big(1 - \text{macro-F1}_{val}\big) + 0.02 \cdot \frac{\#\text{parameter}}{10^6} \]
+Macro-F1 menghitung F1 per kelas lalu merata-ratakannya dengan bobot sama, jadi setiap aktivitas sama penting. Accuracy bisa tetap tinggi walau duduk dan berdiri selalu tertukar, sedangkan macro-F1 akan turun jelas. Penalti parameter menghargai 1 juta parameter setara 0.02 macro-F1, sehingga model besar hanya dipilih kalau macro-F1-nya setidaknya 2 poin lebih tinggi. Untuk aplikasi di HP, \emph{trade-off} ini masuk akal. Setiap kandidat dilatih dengan Adam, batch 64, maksimal 8 epoch, early stopping patience 2, dan seed yang sama.
+
+\jawab{Jawaban 23c: PSO dengan anggaran terbatas}
+Anggarannya 6 partikel $\times$ 5 iterasi = 30 evaluasi. Sebagai perbandingan, grid search kasar dengan 3 nilai dropout dan 3 nilai learning rate saja sudah butuh 720 pelatihan.
+
+\fig{soal_23_3.png}{1.0}{Kiri: trajectory gbest dan fitness tiap partikel. Tengah: akurasi vs ukuran model. Kanan: pengaruh learning rate.}
+
+Konfigurasi terbaik yang ditemukan adalah F = 128, K = 11, dropout 0.017, dense 32, dan lr sekitar $1.6\times10^{-3}$, dengan 320.230 parameter, macro-F1 val 0.9475, dan fitness 0.0589. Kernel 11 sampel setara sekitar 0.22 detik, cukup panjang untuk menangkap satu hentakan langkah.
+
+Gbest bertahan di 0.0756 selama iterasi 0 sampai 2 dan turun ke 0.0589 di iterasi 3. Sebaran fitness partikel menyempit dari 0.08-0.22 menjadi 0.07-0.12. Sejak iterasi 1 hampir semua partikel memilih F = 128, sedangkan kernel baru mengumpul di 9 sampai 11 mulai iterasi 2 dan 3. Model terbesar (1.2 juta parameter, dense 256) hanya mencapai macro-F1 0.917, dan penalti parameter mendorong dense ke 32.
+
+Fitness-nya berisik. Kandidat nomor 15 dan 20 praktis identik (dropout 0.014 dan 0.017, lr 0.0016, seed sama), tetapi macro-F1 val-nya 0.919 dan 0.948. Sebagian keunggulan gbest kemungkinan faktor beruntung (\emph{winner's curse}); saat dilatih ulang, macro-F1 val rata-ratanya 0.943. Ke-30 kandidat unik ini menghabiskan 43.2 menit, dengan kandidat F = 128, K = 11 memakan 80 sampai 180 detik masing-masing di CPU.
+
+\jawab{Jawaban 23d: CNN hasil PSO vs baseline manual}
+Baseline manualnya F = 32, K = 5, dropout 0.3, dense 64, dan lr 0.001. Kedua model dilatih ulang dengan maksimal 30 epoch, patience 5, dan 3 seed (47, 48, 49). Test dievaluasi sekali per model per seed.
+
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Model} & \textbf{Parameter} & \textbf{Waktu latih} & \textbf{macro-F1 val} & \textbf{Acc test} & \textbf{macro-F1 test} \\
+\midrule
+Baseline manual & 72.134 & $49 \pm 10$ s & 0.930 & $0.908 \pm 0.014$ & $0.909 \pm 0.015$ \\
+PSO terbaik & 320.230 & $181 \pm 30$ s & 0.943 & $0.926 \pm 0.005$ & $0.928 \pm 0.005$ \\
+\bottomrule
+\end{tabular}\end{adjustbox}
+
+\fig{soal_23_4.png}{1.0}{Confusion matrix test (seed 47): baseline manual vs CNN hasil PSO.}
+
+Model hasil PSO unggul 1.85 poin macro-F1 dan variasinya antar-seed tiga kali lebih kecil. Ketiga seed PSO berada di atas rata-rata baseline. Perbaikan terbesar ada pada aktivitas berjalan: baseline salah mengira 46 window naik tangga sebagai turun tangga, sedangkan model PSO hanya 2. Kernel yang lebih panjang dan filter yang lebih banyak mampu menangkap ritme langkah yang bedanya tipis.
+
+Postur statis tidak membaik. Pasangan yang paling sering tertukar pada model PSO adalah duduk ke berdiri (31), berbaring ke berdiri (31), dan berbaring ke duduk (29). Yang membedakan ketiga postur itu adalah orientasi HP terhadap gravitasi, dan komponen gravitasi sudah tidak ada di \emph{body\_acc}. Tuning hyperparameter tidak bisa memunculkan informasi yang tidak ada di input.
+
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Biaya} & \textbf{Baseline} & \textbf{PSO} \\
+\midrule
+Tuning & 0 & 43.2 menit (30 pelatihan, sekitar 53$\times$ satu latihan baseline) \\
+Ukuran model & 72 ribu & 320 ribu (4.4$\times$) \\
+Waktu latih final & 49 s & 181 s (3.7$\times$) \\
+Keuntungan & - & +1.85 poin macro-F1, variasi 3$\times$ lebih kecil \\
+\bottomrule
+\end{tabular}\end{adjustbox}
+
+Untuk riset atau prototipe, biaya ini sepadan. Empat puluh tiga menit di laptop masih murah, dan dari log PSO terlihat bahwa kernel panjang membantu sedangkan dense besar tidak perlu. Untuk aplikasi HP perlu ditimbang lagi, karena modelnya 4.4 kali lebih besar hanya untuk tambahan kurang dari 2 poin. Peningkatan yang lebih besar kemungkinan datang dari menambah channel \emph{total\_acc} ke input, bukan dari menambah anggaran tuning.
+
+\subsection{Interpretasi Hasil}
+Pada 20 window acak dari subjek test, CNN hasil PSO menebak benar semuanya, sedangkan baseline salah satu kali (berdiri ditebak duduk). Di seluruh test set, model PSO salah pada sekitar 7\% window, dan sebagian besar kesalahannya terjadi di antara tiga postur statis.
+
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Kriteria} & \textbf{Target} & \textbf{Hasil} & \textbf{Status} \\
+\midrule
+Acc / macro-F1 test PSO & $\geq 0.88$ & 0.926 / 0.928 & \ok{tercapai} \\
+PSO $\geq$ baseline & macro-F1 test & 0.928 vs 0.909 & \ok{tercapai} \\
+Evaluasi kandidat & $\leq 30$ & 30 & \ok{tercapai} \\
+Waktu tuning & $\leq 25$ menit & 43.2 menit & \bad{tidak tercapai} \\
+\bottomrule
+\end{tabular}\end{adjustbox}
+
+Hyperparameter campuran diskret dan kontinu bisa dioptimasi PSO dengan menormalisasi posisi ke [0, 1] dan memetakannya ke laci pilihan valid. Model hasil PSO mencapai macro-F1 test 0.928, lebih tinggi dan lebih stabil dari baseline, walau waktu tuningnya melewati target. Kesalahan pada postur statis perlu diatasi dengan menambah channel \emph{total\_acc}.

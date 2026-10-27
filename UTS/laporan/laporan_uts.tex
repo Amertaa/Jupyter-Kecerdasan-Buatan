@@ -1,0 +1,42 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array,enumitem,xcolor,parskip,graphicx,float,caption,tabularx,listings,adjustbox}
+\usepackage[colorlinks=true,urlcolor=blue,linkcolor=black]{hyperref}
+
+\newcommand{\ok}[1]{\textcolor{green!40!black}{#1}}
+\newcommand{\bad}[1]{\textcolor{red!70!black}{#1}}
+\newcommand{\jawab}[1]{\subsection*{#1}\addcontentsline{toc}{subsection}{#1}}
+\newcommand{\fig}[3]{\begin{figure}[H]\centering\includegraphics[width=#2\textwidth]{figures/#1}\caption{#3}\end{figure}}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\setlist{itemsep=2pt,topsep=2pt}
+\captionsetup{font=small,labelfont=bf}
+\renewcommand{\contentsname}{Daftar Isi}
+\renewcommand{\figurename}{Gambar}
+\renewcommand{\tablename}{Tabel}
+
+\lstset{basicstyle=\ttfamily\footnotesize,breaklines=true,frame=single,columns=fullflexible,
+        keywordstyle=\color{blue!60!black}\bfseries,commentstyle=\color{green!40!black},
+        stringstyle=\color{red!50!black},language=Python,showstringspaces=false}
+
+\title{Laporan Ujian Tengah Semester\\[2pt]\large Kecerdasan Buatan (TE2514031), Semester Gasal 2026/2027\\[2pt]
+\normalsize Soal 3 (GA), Soal 7 (PSO), Soal 12 (Fuzzy Logic), Soal 16 (Neural Network), Soal 23 (PSO-CNN)}
+\author{Marsa Naufal (04231047)}
+\date{27 Oktober 2026}
+
+\setlength{\emergencystretch}{3em}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\input{pendahuluan}
+\input{soal03}
+\input{soal07}
+\input{soal12}
+\input{soal16}
+\input{soal23}
+\input{penutup}
+\appendix
+\input{lampiran}
+
+\end{document}

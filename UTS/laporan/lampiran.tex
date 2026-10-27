@@ -1,0 +1,127 @@
+\newpage
+\section{Lampiran: Potongan Kode Inti}
+Kode lengkap ada di notebook masing-masing soal. Potongan di bawah ini memuat inti mekanisme algoritmanya.
+
+\subsection*{A. Soal 3: Fitness $J(S)$ dan konfigurasi GA (\texttt{pygad})}
+\begin{lstlisting}
+mu_H, mu_L = X_tr[y_tr == 1].mean(), X_tr[y_tr == 0].mean()
+sd_H, sd_L = X_tr[y_tr == 1].std(), X_tr[y_tr == 0].std()
+score_j = ((mu_H - mu_L).abs() / (sd_H + sd_L + 1e-9)).values   # skor pemisahan per fitur
+
+def J(mask):
+    mask = np.asarray(mask, dtype=int)
+    if mask.sum() == 0:
+        return -10.0                     # kromosom kosong dihukum berat
+    return score_j[mask == 1].sum() - 0.10 * mask.sum()
+
+ga = pygad.GA(num_generations=50, num_parents_mating=10, sol_per_pop=30,
+              fitness_func=lambda ga, sol, idx: J(sol),
+              num_genes=11, gene_type=int, gene_space=[0, 1],
+              parent_selection_type="tournament", K_tournament=3,
+              crossover_type="uniform", crossover_probability=0.9,
+              mutation_type="random", mutation_probability=0.10,
+              keep_elitism=2, random_seed=47)
+ga.run()
+\end{lstlisting}
+
+\subsection*{B. Soal 7: Objective multi-output dan PSO (\texttt{pyswarms})}
+\begin{lstlisting}
+def predict(theta, Xs):                  # theta: 18 = 2 x (8 bobot + 1 bias)
+    W = np.stack([theta[0:8], theta[9:17]], axis=1)
+    b = np.array([theta[8], theta[17]])
+    return (Xs @ W + b) * y_sd + y_mu    # kembali ke satuan kWh/m2
+
+def J_single(theta, Xs, Y):
+    rmse = np.sqrt(((predict(theta, Xs) - Y) ** 2).mean(0))
+    return (rmse / y_sd).sum()           # RMSE dibagi sigma tiap target
+
+def objective(swarm):                    # pyswarms memberi (n_particles, 18)
+    return np.array([J_single(p, Xs_tr, Y_tr) for p in swarm])
+
+np.random.seed(47)
+opt = GlobalBestPSO(n_particles=40, dimensions=18,
+                    options={"c1": 1.5, "c2": 1.5, "w": 0.7},
+                    bounds=(-3 * np.ones(18), 3 * np.ones(18)),
+                    bh_strategy="nearest",          # clipping; "reflective" = reflection
+                    velocity_clamp=(-1.0, 1.0))
+cost, theta = opt.optimize(objective, iters=300)
+\end{lstlisting}
+
+\subsection*{C. Soal 12: Membership dari kuartil, rule v2, dan Mamdani FIS (\texttt{scikit-fuzzy})}
+\begin{lstlisting}
+for f in FEATS:                          # membership dari kuartil data latih
+    v = X_tr[f]
+    lo, q1, q2, q3, hi = v.min(), v.quantile(.25), v.median(), v.quantile(.75), v.max()
+    a = ctrl.Antecedent(np.linspace(lo, hi, 501), f)
+    a["Low"]    = fuzz.trapmf(a.universe, [lo, lo, q1, q2])
+    a["Medium"] = fuzz.trimf(a.universe, [q1, q2, q3])
+    a["High"]   = fuzz.trapmf(a.universe, [q2, q3, hi, hi])
+    antecedents[f] = a
+
+def konsekuen_v2(combo):                 # berdasarkan jumlah input yang Low
+    n_low = sum(t == "Low" for t in combo)
+    return "High" if n_low == 0 else ("Medium" if n_low == 1 else "Low")
+
+rules = [ctrl.Rule(antecedents[F[0]][c[0]] & antecedents[F[1]][c[1]] & antecedents[F[2]][c[2]],
+                   risk[konsekuen_v2(c)]) for c in product(TERMS, repeat=3)]   # 27 rule
+sim = ctrl.ControlSystemSimulation(ctrl.ControlSystem(rules))   # min-max, centroid
+
+grid = np.arange(0, 100.5, 0.5)          # threshold dipilih HANYA dari validation
+f1 = [f1_score(y_va, (r_va >= t).astype(int), average="macro") for t in grid]
+THETA = grid[int(np.argmax(f1))]
+\end{lstlisting}
+
+\subsection*{D. Soal 16: Preprocessing tanpa kebocoran dan MLP (\texttt{PyTorch})}
+\begin{lstlisting}
+df = df_raw.dropna(subset=["horsepower"]).drop(columns="car_name")   # sebelum split
+scaler = StandardScaler().fit(df.loc[idx_tr, NUM_FEAT])              # fit di train saja
+
+def prep(frame):
+    num = scaler.transform(frame[NUM_FEAT])
+    onehot = np.stack([(frame["origin"] == k).astype(float) for k in (1, 2, 3)], axis=1)
+    return np.hstack([num, onehot]).astype(np.float32)
+
+class MLP(nn.Module):
+    def __init__(self, n_in, h1=64, h2=32, dropout=0.0):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(n_in, h1), nn.ReLU(), nn.Dropout(dropout),
+                                 nn.Linear(h1, h2), nn.ReLU(), nn.Dropout(dropout),
+                                 nn.Linear(h2, 1))
+    def forward(self, x):
+        return self.net(x).squeeze(-1)
+
+# loop latih: MSE + Adam(lr=1e-3), batch 32, early stopping patience 100 pada RMSE validation,
+# lalu bobot terbaik dikembalikan (model.load_state_dict(best_state))
+\end{lstlisting}
+
+\subsection*{E. Soal 23: Mapping posisi, CNN, dan fitness PSO}
+\begin{lstlisting}
+F_OPT, K_OPT, D_OPT = [16, 32, 64, 128], [3, 5, 7, 9, 11], [32, 64, 128, 256]
+
+def decode(x):                           # posisi [0,1]^5 -> hyperparameter valid
+    x = np.clip(x, 0, 1)
+    return {"filters": F_OPT[min(int(x[0] * 4), 3)], "kernel": K_OPT[min(int(x[1] * 5), 4)],
+            "dropout": 0.5 * x[2], "dense": D_OPT[min(int(x[3] * 4), 3)],
+            "lr": 10 ** (-4 + 2 * x[4])}
+
+class CNN(nn.Module):
+    def __init__(self, filters, kernel, dropout, dense):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv1d(6, filters, kernel, padding=kernel // 2), nn.ReLU(), nn.MaxPool1d(2),
+            nn.Conv1d(filters, filters, kernel, padding=kernel // 2), nn.ReLU(), nn.MaxPool1d(2))
+        self.head = nn.Sequential(nn.Flatten(), nn.Linear(filters * 32, dense), nn.ReLU(),
+                                  nn.Dropout(dropout), nn.Linear(dense, 6))
+    def forward(self, x):                # x: (B, 6, 128)
+        return self.head(self.features(x))
+
+def fitness(x):
+    cfg = decode(x)
+    model, f1_val, _ = train_cnn(cfg, Xt_tr, yt_tr, Xt_va, yt_va)   # maks 8 epoch
+    return (1 - f1_val) + 0.02 * count_params(model) / 1e6
+
+pso = GlobalBestPSO(n_particles=6, dimensions=5, options={"c1": 1.5, "c2": 1.5, "w": 0.7},
+                    bounds=(np.zeros(5), np.ones(5)), velocity_clamp=(-0.25, 0.25),
+                    bh_strategy="nearest")
+best_cost, best_pos = pso.optimize(lambda S: np.array([fitness(p) for p in S]), iters=5)
+\end{lstlisting}

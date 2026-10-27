@@ -1,0 +1,16 @@
+\newpage
+\section{Penutup}
+
+\begin{tabularx}{\textwidth}{@{}lL@{}}
+\toprule
+\textbf{Soal} & \textbf{Temuan utama} \\
+\midrule
+3 (GA) & GA menemukan optimum global (8 fitur, $J = 2.4708$) di semua seed, dan \emph{mutation rate} 0.05 sampai 0.10 paling efisien. $J(S)$ tidak memperhitungkan redundansi antar-fitur, dan \emph{free sulfur dioxide} yang skornya di sekitar ambang bisa masuk atau keluar tergantung sampel data. \\
+7 (PSO) & Satu partikel 18 dimensi menyamai OLS ($R^2$ 0.934 dan 0.892). Clipping dan reflection berakhir di model yang sama. Koefisien geometri tidak bisa ditafsirkan per fitur karena Surface = Wall + 2$\times$Roof. \\
+12 (Fuzzy) & Data latih menunjukkan bahwa efek $\tau$ jenuh. Rule yang direvisi mencapai macro-F1 0.692 dan AUC 0.778, mengalahkan baseline dan sedikit di atas logistic regression, dan setiap keputusannya tetap bisa dijelaskan. \\
+16 (NN) & MLP mencapai MAE 5.4 hp dan $R^2$ 0.951 tanpa overfit. Dropout 0.2 memberi perbaikan kecil yang konsisten di 5 seed. \\
+23 (Gabungan) & PSO-CNN mencapai macro-F1 0.928 dibanding 0.909 dan lebih stabil, dengan model 4.4$\times$ lebih besar dan tuning 43 menit. Akurasinya dibatasi oleh input yang tidak memuat gravitasi. \\
+\bottomrule
+\end{tabularx}
+
+Beberapa temuan paling berguna di UTS ini baru terlihat setelah hasilnya saya periksa ulang. Fitness Soal 3 ternyata bisa dipecah per fitur, sehingga GA pasti menemukan optimumnya. Di Soal 7 ada fitur yang kolinear sempurna, di Soal 12 efek waktu reaksi ternyata jenuh, test set Soal 16 kebetulan tidak memuat mobil bertenaga besar, dan input Soal 23 kehilangan informasi gravitasi. Tanpa pemeriksaan itu, angka-angka di atas akan terlihat lebih meyakinkan daripada yang sebenarnya.

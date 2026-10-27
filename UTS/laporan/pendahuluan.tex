@@ -1,0 +1,21 @@
+\section{Pendahuluan}
+
+Saya mendapat lima soal UTS, satu dari setiap kelompok: Genetic Algorithm (Soal 3), Particle Swarm Optimization (Soal 7), Fuzzy Logic (Soal 12), Neural Network (Soal 16), dan algoritma gabungan (Soal 23). Semuanya saya kerjakan di Python, satu notebook Jupyter per soal, dan setiap notebook bisa dijalankan ulang. Angka dan grafik di laporan ini diambil langsung dari output notebook tersebut.
+
+\subsection*{Pengaturan umum}
+\begin{tabularx}{\textwidth}{@{}lL@{}}
+\toprule
+\textbf{Hal} & \textbf{Keterangan} \\
+\midrule
+Seed & 47 (dua digit terakhir NIM 04231047), dipakai untuk semua proses acak: split data, inisialisasi GA/PSO, dan bobot neural network. \\
+Bahasa \& library & Python 3.13; \texttt{pygad} (GA), \texttt{pyswarms} (PSO), \texttt{scikit-fuzzy} (Mamdani FIS), \texttt{PyTorch} (MLP dan 1D-CNN), \texttt{scikit-learn}, \texttt{pandas}, \texttt{numpy}, \texttt{scipy}, \texttt{matplotlib}. \\
+Dataset & UCI: D4 Wine Quality (red), D3 Energy Efficiency, D6 Electrical Grid Stability, D8 Auto MPG, D9 Human Activity Recognition. \\
+Aturan test set & Test set tidak pernah dipakai untuk memilih hyperparameter, threshold, versi rule, maupun membership function. Semua pemilihan memakai data latih atau validation. \\
+Notebook & \texttt{soal\_03\_ga.ipynb}, \texttt{soal\_07\_pso.ipynb}, \texttt{soal\_12\_fuzzy.ipynb}, \texttt{soal\_16\_mlp.ipynb}, \texttt{soal\_23\_pso\_cnn.ipynb} \\
+\bottomrule
+\end{tabularx}
+
+\subsection*{Alur pengerjaan}
+Setiap soal saya kerjakan mengikuti tahapan sains data. Bagian Business Understanding berisi latar belakang dan kriteria kesuksesan yang ambangnya saya tetapkan sebelum eksperimen. Data Understanding memeriksa sampel, atribut, statistik, missing value, duplikasi, dan outlier, lalu Data Preparation menjelaskan pembersihan, split, encoding, dan scaling beserta alasannya. Modeling dan Evaluation memuat jawaban butir (a) sampai (d). Interpretasi Hasil menguji model pada data yang belum pernah dilihat dan mengecek kriteria kesuksesan.
+
+Bagian Data Understanding di laporan ini saya ringkas. Sampel 20 baris dan tabel statistik lengkapnya ada di notebook masing-masing.
